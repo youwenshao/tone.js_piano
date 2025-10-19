@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tone.js Piano Synth</title>
+    <script src="https://unpkg.com/tone@14.8.49/build/Tone.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', monospace;
+        }
+        
+        body {
+            background-color: #000;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            width: 100%;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            font-size: 24px;
+            font-weight: normal;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+        }
+        
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            padding: 10px;
+            border: 1px solid #fff;
+            font-size: 14px;
+        }
+        
+        .keyboard-container {
+            position: relative;
+            margin: 20px 0;
+            border: 1px solid #fff;
+            padding: 20px 15px;
+            background-color: #000;
+            width: 400px;
+            height: 120px;
+            margin-left: auto;
+            margin-right: auto;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .ascii-keyboard {
+            font-family: monospace;
+            white-space: pre;
+            text-align: center;
+            font-size: 11px;
+            line-height: 1.2;
+            z-index: 1;
+            position: relative;
+            margin: 0 auto;
+        }
+        
+        .key-highlights {
+            position: absolute;
+            top: 0;
+            left: 22px;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2;
+        }
+        
+        .key-highlight {
+            position: absolute;
+            background-color: #fff;
+            color: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 11px;
+            opacity: 0;
+            transition: opacity 0.1s;
+            border-radius: 1px;
+        }
+        
+        .key-highlight.active {
+            opacity: 1;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            margin: 0 10px;
+        }
+        
+        .control-title {
+            font-size: 12px;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+        
+        .control-keys {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .control-key {
+            width: 40px;
+            height: 40px;
+            border: 1px solid #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        
+        .control-key.active {
+            background-color: #fff;
+            color: #000;
+        }
+        
+        .legend {
+            border: 1px solid #fff;
+            padding: 15px;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+        
+        .legend h2 {
+            font-size: 14px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .legend-section {
+            margin-bottom: 15px;
+        }
+        
+        .start-prompt {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+        
+        .start-button {
+            padding: 15px 30px;
+            border: 1px solid #fff;
+            background: none;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .start-button:hover {
+            background-color: #fff;
+            color: #000;
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="start-prompt" id="startPrompt">
+        <button class="start-button" id="startButton">START SYNTH</button>
+    </div>
+    
+    <div class="container">
+        <div class="header">
+            <h1>TONE.JS PIANO SYNTH</h1>
+        </div>
+        
+        <div class="status-bar">
+            <div>OSCILLATOR: <span id="oscType">sine</span></div>
+            <div>OCTAVE: <span id="currentOctave">4</span></div>
+            <div>POLYPHONY: <span id="polyCount">0</span></div>
+        </div>
+        
+        <div class="keyboard-container">
+            <div class="ascii-keyboard">
+  ┌────┬─┬───┬─┬────┬────┬─┬───┬─┬───┬─┬────┬─────┐
+  │    │R│   │T│    │    │U│   │I│   │O│    │     │
+  │    │#│   │#│    │    │#│   │#│   │#│    │     │
+  │    └┬┘   └┬┘    │    └┬┘   └┬┘   └┬┘    │     │
+  │  D  │  F  │  G  │  H  │  J  │  K  │  L  │  ;  │
+  │ (C) │ (D) │ (E) │ (F) │ (G) │ (A) │ (B) │ (C) │
+  └─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┘
+            </div>
+            <div class="key-highlights" id="keyHighlights">
+                <!-- Black keys -->
+                <div class="key-highlight" data-key="r" style="left: 58px; top: 25px; width: 12px; height: 12px;">R</div>
+                <div class="key-highlight" data-key="t" style="left: 98px; top: 25px; width: 12px; height: 12px;">T</div>
+                <div class="key-highlight" data-key="u" style="left: 178px; top: 25px; width: 12px; height: 12px;">U</div>
+                <div class="key-highlight" data-key="i" style="left: 218px; top: 25px; width: 12px; height: 12px;">I</div>
+                <div class="key-highlight" data-key="o" style="left: 258px; top: 25px; width: 12px; height: 12px;">O</div>
+                
+                <!-- White keys -->
+                <div class="key-highlight" data-key="d" style="left: 30px; top: 64px; width: 28px; height: 14px;">D</div>
+                <div class="key-highlight" data-key="f" style="left: 70px; top: 64px; width: 28px; height: 14px;">F</div>
+                <div class="key-highlight" data-key="g" style="left: 110px; top: 64px; width: 28px; height: 14px;">G</div>
+                <div class="key-highlight" data-key="h" style="left: 150px; top: 64px; width: 28px; height: 14px;">H</div>
+                <div class="key-highlight" data-key="j" style="left: 190px; top: 64px; width: 28px; height: 14px;">J</div>
+                <div class="key-highlight" data-key="k" style="left: 230px; top: 64px; width: 28px; height: 14px;">K</div>
+                <div class="key-highlight" data-key="l" style="left: 270px; top: 64px; width: 28px; height: 14px;">L</div>
+                <div class="key-highlight" data-key=";" style="left: 310px; top: 64px; width: 28px; height: 14px;">;</div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <div class="control-title">OSCILLATOR</div>
+                <div class="control-keys">
+                    <div class="control-key" data-osc="sine" data-key="z">Z</div>
+                    <div class="control-key" data-osc="square" data-key="x">X</div>
+                    <div class="control-key" data-osc="sawtooth" data-key="c">C</div>
+                    <div class="control-key" data-osc="triangle" data-key="v">V</div>
+                    <div class="control-key" data-osc="pwm" data-key="b">B</div>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <div class="control-title">OCTAVE</div>
+                <div class="control-keys">
+                    <div class="control-key" data-octave="-1" data-key="n">N</div>
+                    <div class="control-key" data-octave="1" data-key="m">M</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="legend">
+            <h2>CONTROLS</h2>
+            
+            <div class="legend-section">
+                <strong>PIANO KEYS</strong><br>
+                top row &nbsp;&nbsp;&nbsp;(R T U I O)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- black keys (C# D# F# G# A#)<br>
+                second row (D F G H J K L ;) - white keys (C D E F G A B C)
+            </div>
+            
+            <div class="legend-section">
+                <strong>OSCILLATOR TYPES</strong><br>
+                Z - sine | X - square | C - sawtooth | V - triangle | B - (PWM)
+            </div>
+            
+            <div class="legend-section">
+                <strong>OCTAVE SHIFT</strong><br>
+                N - octave DOWN | M - octave UP
+            </div>
+        </div>
+    </div>
+
+    <P></P>
+    <p style="text-align: center;  padding: 35px; font-size: 9px;">YOUWEN SHAO 2025</p>
+
+    <script>
+        // Audio context management
+        let audioStarted = false;
+        const startPrompt = document.getElementById('startPrompt');
+        const startButton = document.getElementById('startButton');
+        
+        startButton.addEventListener('click', async () => {
+            await Tone.start();
+            audioStarted = true;
+            startPrompt.classList.add('hidden');
+            console.log('Audio context started');
+        });
+        
+        // Create synth
+        const synth = new Tone.PolySynth(Tone.Synth, {
+            oscillator: {
+                type: "sine"
+            },
+            envelope: {
+                attack: 0.02,
+                decay: 0.1,
+                sustain: 0.3,
+                release: 0.5
+            }
+        }).toDestination();
+        
+        // State management
+        const state = {
+            activeNotes: new Set(),
+            oscillatorType: "sine",
+            octaveOffset: 0,
+            polyCount: 0,
+            // Track which octave keys are currently pressed
+            activeOctaveKeys: new Set()
+        };
+        
+        // DOM elements for status display
+        const oscTypeElement = document.getElementById('oscType');
+        const currentOctaveElement = document.getElementById('currentOctave');
+        const polyCountElement = document.getElementById('polyCount');
+        const keyHighlights = document.getElementById('keyHighlights');
+        
+        // Note mapping
+        const keyToNote = {
+            // Black keys (top row)
+            'r': 'C#4', 't': 'D#4', 'u': 'F#4', 'i': 'G#4', 'o': 'A#4',
+            // White keys (second row)
+            'd': 'C4', 'f': 'D4', 'g': 'E4', 'h': 'F4', 'j': 'G4', 
+            'k': 'A4', 'l': 'B4', ';': 'C5'
+        };
+        
+        // Function to adjust note by octave
+        function getAdjustedNote(note) {
+            if (!note) return null;
+            
+            const noteName = note.slice(0, -1);
+            const octave = parseInt(note.slice(-1));
+            const adjustedOctave = octave + state.octaveOffset;
+            
+            // Limit octave range to prevent extreme frequencies
+            if (adjustedOctave < 1) return noteName + '1';
+            if (adjustedOctave > 7) return noteName + '7';
+            
+            return noteName + adjustedOctave;
+        }
+        
+        // Function to update UI
+        function updateUI() {
+            oscTypeElement.textContent = state.oscillatorType;
+            currentOctaveElement.textContent = 4 + state.octaveOffset;
+            polyCountElement.textContent = state.polyCount;
+            
+            // Update active control keys
+            document.querySelectorAll('.control-key[data-osc]').forEach(key => {
+                if (key.getAttribute('data-osc') === state.oscillatorType) {
+                    key.classList.add('active');
+                } else {
+                    key.classList.remove('active');
+                }
+            });
+            
+            // Update octave control keys, only show active if the key is currently pressed
+            document.querySelectorAll('.control-key[data-octave]').forEach(key => {
+                const octaveKey = key.getAttribute('data-key');
+                if (state.activeOctaveKeys.has(octaveKey)) {
+                    key.classList.add('active');
+                } else {
+                    key.classList.remove('active');
+                }
+            });
+        }
+        
+        // Function to update key highlight
+        function updateKeyHighlight(key, isActive) {
+            const keyChar = key.toLowerCase();
+            const highlight = document.querySelector(`.key-highlight[data-key="${keyChar}"]`);
+            
+            if (highlight) {
+                if (isActive) {
+                    highlight.classList.add('active');
+                } else {
+                    highlight.classList.remove('active');
+                }
+            }
+        }
+        
+        // Function to trigger note
+        function triggerNote(note, key) {
+            if (!audioStarted) return;
+            
+            const adjustedNote = getAdjustedNote(note);
+            if (adjustedNote && !state.activeNotes.has(note)) {
+                synth.triggerAttack(adjustedNote);
+                state.activeNotes.add(note);
+                state.polyCount = state.activeNotes.size;
+                
+                // Visual feedback on ASCII keyboard
+                updateKeyHighlight(key, true);
+                
+                updateUI();
+            }
+        }
+        
+        // Function to release note
+        function releaseNote(note, key) {
+            if (!audioStarted) return;
+            
+            const adjustedNote = getAdjustedNote(note);
+            if (adjustedNote && state.activeNotes.has(note)) {
+                synth.triggerRelease(adjustedNote);
+                state.activeNotes.delete(note);
+                state.polyCount = state.activeNotes.size;
+                
+                // Visual feedback on ASCII keyboard
+                updateKeyHighlight(key, false);
+                
+                updateUI();
+            }
+        }
+        
+        // Keyboard event handlers
+        document.addEventListener("keydown", e => {
+            if (!audioStarted && e.key !== 'Enter') return;
+            
+            const key = e.key.toLowerCase();
+            
+            // Prevent default for piano keys to avoid browser shortcuts
+            if (key in keyToNote || key === 'z' || key === 'x' || key === 'c' || 
+                key === 'v' || key === 'b' || key === 'n' || key === 'm') {
+                e.preventDefault();
+            }
+            
+            // Piano keys
+            if (key in keyToNote) {
+                triggerNote(keyToNote[key], key);
+            }
+            
+            // Oscillator controls
+            else if (key === 'z') {
+                state.oscillatorType = 'sine';
+                synth.set({ oscillator: { type: state.oscillatorType } });
+                updateUI();
+            }
+            else if (key === 'x') {
+                state.oscillatorType = 'square';
+                synth.set({ oscillator: { type: state.oscillatorType } });
+                updateUI();
+            }
+            else if (key === 'c') {
+                state.oscillatorType = 'sawtooth';
+                synth.set({ oscillator: { type: state.oscillatorType } });
+                updateUI();
+            }
+            else if (key === 'v') {
+                state.oscillatorType = 'triangle';
+                synth.set({ oscillator: { type: state.oscillatorType } });
+                updateUI();
+            }
+            else if (key === 'b') {
+                state.oscillatorType = 'pwm';
+                synth.set({ oscillator: { type: state.oscillatorType } });
+                updateUI();
+            }
+            
+            // Octave controls
+            else if (key === 'n') {
+                state.octaveOffset = Math.max(state.octaveOffset - 1, -3);
+                state.activeOctaveKeys.add('n');
+                updateUI();
+            }
+            else if (key === 'm') {
+                state.octaveOffset = Math.min(state.octaveOffset + 1, 3);
+                state.activeOctaveKeys.add('m');
+                updateUI();
+            }
+        });
+        
+        document.addEventListener("keyup", e => {
+            if (!audioStarted) return;
+            
+            const key = e.key.toLowerCase();
+            
+            // Piano keys
+            if (key in keyToNote) {
+                releaseNote(keyToNote[key], key);
+            }
+            
+            // Octave controls - remove highlight on keyup
+            else if (key === 'n' || key === 'm') {
+                state.activeOctaveKeys.delete(key);
+                updateUI();
+            }
+        });
+        
+        // Mouse support for control keys
+        document.querySelectorAll('.control-key[data-osc]').forEach(key => {
+            key.addEventListener('click', () => {
+                if (!audioStarted) return;
+                state.oscillatorType = key.getAttribute('data-osc');
+                synth.set({ oscillator: { type: state.oscillatorType } });
+                updateUI();
+            });
+        });
+        
+        document.querySelectorAll('.control-key[data-octave]').forEach(key => {
+            key.addEventListener('mousedown', () => {
+                if (!audioStarted) return;
+                const octaveShift = parseInt(key.getAttribute('data-octave'));
+                const keyChar = key.getAttribute('data-key');
+                
+                state.octaveOffset = Math.max(Math.min(state.octaveOffset + octaveShift, 3), -3);
+                state.activeOctaveKeys.add(keyChar);
+                updateUI();
+            });
+            
+            key.addEventListener('mouseup', () => {
+                const keyChar = key.getAttribute('data-key');
+                state.activeOctaveKeys.delete(keyChar);
+                updateUI();
+            });
+            
+            key.addEventListener('mouseleave', () => {
+                const keyChar = key.getAttribute('data-key');
+                state.activeOctaveKeys.delete(keyChar);
+                updateUI();
+            });
+        });
+        
+        // Initialize UI
+        updateUI();
+    </script>
+</body>
+</html>
